@@ -31,12 +31,69 @@ Downgrading after upgrade is not possible without manual intervention: In partic
 ### Highlights from dCache release 2.13
 
 #### Highlights introduced on dCache 2.14
+* Significant performance and storage space improvements in Chimera.
+* Almost all certificiate handling code has been ported to the EMI CANL library rather than JGlobus. Provides OCSP support and EUGRIDPMA name space support.
+* Concurrent request processing in gPlazma.
+* Pool group patterns in admin shell.
+* Improved UberFTP support.
+* WebDAV door can report file locality.
+* Fair share scheduling for SRM transfers.
+* SRM database managed by liquibase.
+* Configurable kXR_Qconfig support for xrootd.
 
 #### Highlights introduced on dCache 2.15
+* Improved glob patterns.
+* More robust handling of over load situations.
+* fsck for Chimera on upgrade.
+* Reduced storage requirements for Chimera.
+* Chimera can store multiple checksum for a file.
+* Admin shell documentation updates.
+* gPlazma restriction attributes.
+* Set ACLs through DCAP.
+* Pool startup improvements.
 
 #### Highlights introduced on dCache 2.16
+* New experimental RESTful API.
+* New experimental end user web interface called dCacheView.
+* New experimental support for redundant cell communication using multiple message brokers.
+* New resilience service for managing file replicas. Will eventually replace the replica manager.
+* New experimental support for replicable services.
+* Scalable SRM frontend service.
+* Limited OpenID Connect support.
 
 ### Incompatibilities
+
+#### Incompatibilities introducted in 2.14
+* Strict RFC 2818 host name checking in SRM/HTTP clients - this in particular affects server side srmCopy and WebDAV COPY. It is expected that this will break with server side copy to/from some WLCG sites. Globus Toolkit enables the same strict mode by default by the end of the year, so we expect the affected sites to get new host certificates soon. Additionally, server side copy is not used much, so it is likely not be a big issue for dCache.
+* Significant schema changes in Chimera. Upon upgrade the schema will be updated, which may take a while for large sites. To downgrade, the schema changes have to be rolled back with the appropriate command in dCache before downgrading dCache.
+* PnfsManager now uses a single request queue. This could possibly affected third-party monitoring scripts that scrape the info output.
+* All forbidden and obsolete properties in 2.13 have been removed and all deprecated properties in 2.13 have been marked obsolete.
+* RC4 ciphers are banned by default and the option to ban Diffie Hellman key exchange if broken has been removed.
+* gPlazma now instantiates plugins separately for every use in gplazma.conf. This means that the configuration has to be specified for all lines, not just the first. This provides the flexibility to use the same plugin several times with different configurations.
+* The WebDAV door enables BASIC authentication by default over HTTPS.
+* Pools always compute checksums on the fly and the ontransfer checksum policy has been dropped.
+* The SRM by default uses a fair share scheduler for scheduling transfers. Thus the observed behaviour under load may have changed.
+* SRM 1 support is deprecated and disabled by default.
+* SRM scheduler states have been simplified. Third party monitoring scripts that track request states may have to be updated.
+* SRM no longer retries SRM requests internally. Failures are propagated to the client to provide fail-fast behaviour.
+* SRM no longer resolves host names in SURLs when determining whether they are local to this dCache instance or not. In particular, this may affect sites that use DNS aliases.
+* The SRM database schema is now managed by liquibase and the schema is updated upon upgrade. To downgrade, the schema changes have to be rolled back with the appropriate command in dCache before downgrading dCache. As a consequence, user information for existing SRM requests will be lost from the database. Third party scripts that access the SRM database directly may have to be updated.
+
+#### Incompatibilities introducted in 2.15
+* Some configuration properties have been deprecated or made obsolete. dcache check-config can tell you if you are affected.
+* Several Chimera schema changes are applied upon upgrade. To downgrade those schema changes have to be rolled back prior to downgrade.
+* Several bugs have been fixed. In the unlikely event that you relied on these bugs, upgrading may break your installation.
+* X.509 proxy certificate source address restrictions are now enforced. Clients that relied on these not being enforced will fail after upgrade.
+
+#### Incompatibilities introducted in 2.16
+* Apache ZooKeeper is now a required dependency.
+* Several database schemas will be updated upon upgrade. This includes billing and pinmanager. Upon downgrade, these schemas must be rolled back using the dcache database rollbackToDate command prior to downgrading dCache. Third party code that uses these database will possibly have to be modified.
+* The dCache location manager can no longer be configured to establish arbitrary topologies.
+* The srm service was split into two services - a frontend service called srm and a backend service called srmmanager. Both are required to operate an SRM service in dCache.
+* Support for the SRM 1 protocol has been dropped.
+* The FTP door’s default root path behavior now matches that of other doors. That is, it no longer uses the per user root setting as the root directory. The original behavior can be restored by appropriate configuration.
+* The RemoteTransferManager and CopyManager cells of the transfermanagers service have been merged.
+* Sites with a custom httpd.conf configuration will have to adjust this upon upgrade to inject the cell address of the info service.
 
 ## Services
 
