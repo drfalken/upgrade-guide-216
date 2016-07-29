@@ -246,11 +246,12 @@ An *OpenID Connect* plugin (`oidc`) for gPlazma was added as well as limited sup
 
 ### Generic gPlazma mapping plugin
 A new generic mapping plugin (`multimap`) was added to gPlazma. It allows mappings from any principal to multiple other principals. Currently only `dn`, `oidc`, `username`, `uid`, `gid`, `kerberos`, `email` principals are supported. An example configuration file looks like:
-
-> "dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" username:kermit
-> oidc:googleoidcsubject gid:1000,true uid:1000
-> "dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" uid:1000
-> "dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" uid:1000 gid:500,true gid:100
+```
+"dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" username:kermit
+oidc:googleoidcsubject gid:1000,true uid:1000
+"dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" uid:1000
+"dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" uid:1000 gid:500,true gid:100
+```
 
 ### Cell address of the `info` service is no longer hard-coded in `httpd`
 The new `httpd.service.info` property allows the cell address of the `info` service to be configured in the `httpd` service. Sites with custom `httpd.conf` definitions will have to update the configuration such that the info alias looks something like
