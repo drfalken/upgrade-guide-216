@@ -114,10 +114,10 @@ Downgrading after upgrade is not possible without manual intervention: In partic
 Apache ZooKeeper is a naming, coordination, and synchronization services. Starting with the release of dCache 2.16, Apache ZooKeeper is a required dependency to run dCache. It is used by several components in dCache – e.g. for locating dCache domains, locating services, and leader election. Future versions are most likely increasing reliance on Apache ZooKeeper.
 
 To make migration of existing deployments easy, we support using an embedded ZooKeeper, i.e. the ZooKeeper server runs inside a regular dCache service in a dCache domain. It is configured through dCache’s own configuration system. For easy upgrade, add the following as the first domain in the layout file of the host with `dCacheDomain`:
-
-> [zookeeperDomain]
-> [zookeeperDomain/zookeeper]
-
+```
+[zookeeperDomain]
+[zookeeperDomain/zookeeper]
+```
 By placing this domain on the host running `dCacheDomain`, other domains in dCache will be able to locate the ZooKeeper instance without configuration changes. Eventually you should configure `dcache.zookeeper.connection` rather than `dcache.broker.host` to allow dCache domains to locate ZooKeeper.
 
 If using the embedded ZooKeeper service, we recommend running `zookeeper` in its own dCache domain to avoid runtime dependencies between the ZooKeeper server and the client inside dCache connecting to it. In particular the low level cells system itself relies on ZooKeeper, presenting problems during startup and shutdown of the domain hosting `zookeeper`. Such problems are minimized by running the service in its own domain, but error messages in the log files during startup and shutdown are inevitable.
@@ -252,12 +252,11 @@ oidc:googleoidcsubject gid:1000,true uid:1000
 "dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" uid:1000
 "dn:/C=DE/O=Hamburg/OU=desy.de/CN=Kermit The Frog" uid:1000 gid:500,true gid:100
 ```
-
 ### Cell address of the `info` service is no longer hard-coded in `httpd`
 The new `httpd.service.info` property allows the cell address of the `info` service to be configured in the `httpd` service. Sites with custom `httpd.conf` definitions will have to update the configuration such that the info alias looks something like
-
-> set alias info class org.dcache.services.info.InfoHttpEngine -- -cell=${httpd.service.info}
-
+```
+set alias info class org.dcache.services.info.InfoHttpEngine -- -cell=${httpd.service.info}
+```
 ### NFS is better
 Better spec compliance, faster.
 
