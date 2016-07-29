@@ -298,8 +298,8 @@ Another area in which dCache relied on the JGlobus client was for the FTP client
 As mentioned above, the SRM client has been updated to use our own GSI implementation on top of CANL for certificate handling. On a host with a large number of CA certificates, the startup time is significantly reduced.
 
 The SRM protocol is implemented using SOAP over HTTP over GSI. Due to the old SOAP version used we are bound to the Axis 1 library. In the past we relied upon the minimalistic HTTP client integrated into Axis 1. In dCache 2.14 we added an Axis handler to use the Apache HTTP components client. The primary benefits are:
-** Proper keep-alive support, meaning that the client no longer needs to reestablish the connection to the server for every low level SRM request. This both reduces the latency experienced by the client and reduces load on the server.
-** Strict *RFC 2818* host name verification.
+* Proper keep-alive support, meaning that the client no longer needs to reestablish the connection to the server for every low level SRM request. This both reduces the latency experienced by the client and reduces load on the server.
+* Strict *RFC 2818* host name verification.
 
 In partiular the latter point has the potential to break compatibility with some sites. This is the case if the host certificate used by the site does not comply with RFC 2818. Without strict RFC 2818 support, TLS/GSI connections are susceptible to man in the middle attacks. The Globus Toolkit (the C library, not the JGlobus Java version) will switch to strict RFC 2818 support by default at the end of 2015 and we expect that most sites will quickly request certificates with correct subject alternative names.
 
@@ -323,12 +323,12 @@ The Chimera database schema has been updated to improve throughput, reduce laten
 Once upgraded to dCache 2.14, one cannot downgrade to 2.13 without rolling back the schema changes. This must be done *before* downgrading using the `dcache database rollbackToDate` command.
 
 Several schema changes are applied durin upgrade:
-** The `.` and `..` directory entries are no longer stored in the database. Since Chimera is stored in a relational database, it can find parrent directories without these backpointers. Where applicable, these directories entries are created on the fly in dCache.
-** Directory tags are no longer created by a trigger. In the past the trigger reacted upon the insertion of the `..` entry, but since we no longer insert this entry we cannot rely on this trigger. Furthermore, for the temporary directories created for every SRM upload the tags should not be copied and the trigger needlessly slowed down creating such directories.
-** Inodes are now created using the new `f_create_inode` stored procedure. This eliminates several round trips between the client and PostgreSQL.
-** The type of the `itagid` column of the `t_tags_inodes` table has been changed to a 64 bit auto sequence field. This reduces storage space as well as CPU load for these tables.
-** The `t_access_latency` and `t_retention_policy` tables have been merged into the `t_inodes` table. The former two tables are dropped. This reduces storage space as well as latency in creating and reading inodes.
-** The address mask is removed from the `t_acl`. Chimera ACLs no longer support access control by client IP.
+* The `.` and `..` directory entries are no longer stored in the database. Since Chimera is stored in a relational database, it can find parrent directories without these backpointers. Where applicable, these directories entries are created on the fly in dCache.
+* Directory tags are no longer created by a trigger. In the past the trigger reacted upon the insertion of the `..` entry, but since we no longer insert this entry we cannot rely on this trigger. Furthermore, for the temporary directories created for every SRM upload the tags should not be copied and the trigger needlessly slowed down creating such directories.
+* Inodes are now created using the new `f_create_inode` stored procedure. This eliminates several round trips between the client and PostgreSQL.
+* The type of the `itagid` column of the `t_tags_inodes` table has been changed to a 64 bit auto sequence field. This reduces storage space as well as CPU load for these tables.
+* The `t_access_latency` and `t_retention_policy` tables have been merged into the `t_inodes` table. The former two tables are dropped. This reduces storage space as well as latency in creating and reading inodes.
+* The address mask is removed from the `t_acl`. Chimera ACLs no longer support access control by client IP.
 
 #### Chimera PostgreSQL 9.5 driver
 Chimera has pluggable RDBMS drivers. dCache 2.14 adds a driver specific for PostgreSQL 9.5 and newer. This driver avoids the excessive logging caused by primary key uniqueness violations that are common with Chimera.
@@ -383,8 +383,8 @@ Thanks to a contribution by Christoph Anton Mitterer, the footer on WebDAV door 
 
 #### WebDAV door can report file locality
 SRM has the concept of file locality, i.e. whether a file is on disk, on tape, both, offline or lost. The WebDAV door now exposes this information too:
-** The HTML rendering of directory listings uses the icon to indicate the file locality.
-** For programatic access, the WebDAV PROPFIND method.
+* The HTML rendering of directory listings uses the icon to indicate the file locality.
+* For programatic access, the WebDAV PROPFIND method.
 
 An example of the latter follows:
 ```
@@ -436,10 +436,10 @@ In dCache 2.14 the `ontransfer` checksum calculation is no longer optional - it 
 The SRM database is now managed by the liquibase schema management library. An existing schema from a previous installation is automatically detected, but we recommend doing a test upgrade on a clone of the database to check compatibility with any local schema modifications.
 
 Several changes are made to the schema of the SRM database:
-** Missing indexes are added.
-** Unused indexes are removed.
-** The `count` column of the `lsrequests` table is renamed to `cnt` to avoid conflicts with the like named SQL keyword.
-** The encoding of user information is redone entirely and user information is now stored in a binary format.
+* Missing indexes are added.
+* Unused indexes are removed.
+* The `count` column of the `lsrequests` table is renamed to `cnt` to avoid conflicts with the like named SQL keyword.
+* The encoding of user information is redone entirely and user information is now stored in a binary format.
 
 In particular the latter change is worth paying attention to. Due to this change, existing requsts will fail during upgrade as the existing user information is deleted upon upgrade. Already finished requests will be kept in the database until they are garbage collected, but they too loose all information about who created it. Furthermore, the binary encoding in the new user record means that it is no longer easy to access this information in local queries. This change was necessary to work around limitations in the previous serialization - in short, we cannot serialize X.500 names in string form without loosing information.
 
@@ -497,8 +497,8 @@ SRM scheduler states have been simplified by collapsing several states into the 
 
 #### SRM no longer retries requests
 SRM used to have support to retry requests internally upon errors. The implementation of this functionality was problematic since
-** many errors were not retried even when they should, and worse
-** many errors that should not be retried were.
+* many errors were not retried even when they should, and worse
+* many errors that should not be retried were.
 
 In the interest of fail fast behaviour and simpler code, support for internally retrying requests has been dropped. Failures are propagated to the client and it is up to the client to determine whether and how to retry. This also allows client to more quickly fall back to other sites in case of problems.
 
@@ -506,8 +506,8 @@ In the interest of fail fast behaviour and simpler code, support for internally 
 The SRM protocol has a concept of site URLs and classifies these into those local to the storage system and those belonging to other storage systems. This classification is important when the SRM is to determine which file is local and which is remote in a third party SRM copy operation, or just to determine if the SURL is indeed local in put or get operations.
 
 The most important changes are:
-** srmCopy is now limited to having a local source or local destination SURL. It no longer allows a transfer between a local non-SRM door and a remote system.
-** no DNS lookup is performed in determining whether the SURL is local. Previously the host name would be resolved to an IP addressed and the IP addressed would be compared to local addresses. Now the list of local host names is determined during startup and the host name in the SURL is compared to the local names directly. An administrator still has control over which names to consider local by setting the `srm.net.local-hosts` property.
+* srmCopy is now limited to having a local source or local destination SURL. It no longer allows a transfer between a local non-SRM door and a remote system.
+* no DNS lookup is performed in determining whether the SURL is local. Previously the host name would be resolved to an IP addressed and the IP addressed would be compared to local addresses. Now the list of local host names is determined during startup and the host name in the SURL is compared to the local names directly. An administrator still has control over which names to consider local by setting the `srm.net.local-hosts` property.
 
 #### Several minor SRM fixes
 Several corner cases and race conditions have been fixed, as well as better failure handling to prevent leaking pins or upload directories.
