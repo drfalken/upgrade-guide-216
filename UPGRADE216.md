@@ -111,6 +111,437 @@ Downgrading after upgrade is not possible without manual intervention: In partic
 
 ## What's new
 ### New changes introduced on 2.14
+#### Improved execution time statistics
+Several cells provide information on request execution times. The code has been improved to reduce the effect of numerical instabilities. This improves the accuracy of the collected statistics. Rather than the population standard deviation we now report the sample standard deviation.
+
+#### Use CANL for certificate verification
+CANL is a library provided by EMI that provides support for OpenSSL style trust stores, PEM encoded certificates, proxy certificates, certificate path verification, CRL and OCSP validation, etc. In the past, dCache has relied upon the JGlobus library for such operations, but JGlobus has not seen much maintenance lately. We have switched to using CANL instead as we feel it is more up to date (an important aspect for security critical libraries), provides a cleaner API, has more features, and doesn’t lock us into old versions of other third party libraries. There may also be performance benefits - we know for certain that the startup time for client tools is improved, and time will tell if the server side is faster too.
+
+The amount of changes required in dCache to implement this was quite large and touched most components, although the externally visible number of changes should be low. Still, with this amount of changes there is bound to be a regression or two.
+
+One feature of JGlobus missing in CANL is an implementation of the GSI protocol. GSI is essentially TLS with an additional credential delegation step after the initial TLS handshake. In dCache 2.13 we introduced our own GSI implementation in dCache to provide support for non-blocking IO in the SRM door. In 2.14 this has been adopted by all doors providing GSI support, i.e. SRM, FTP and DCAP. Furthermore, the client side of GSI has been implemented and is used by our FTP and SRM clients, as well as our GridSite delegation shell.
+
+As part of porting DCAP and FTP to our own GSI implementation, the SSL context is now cached between sessions, greatly reducing the per-connection overhead of these doors. Consequently these doors now expose settings for key pair cache lifetime:
+```
+#  ---- Delegation key pair reuse lifetime
+#
+#  X.509 clients may delegate credentials to dCache using GSI or the dedicated GridSite
+#  delegation service. The delegation works by the server generating a certificate
+#  signing request which the client signs. Since generating a key pair as part of the
+#  signing request is expensive, dCache caches and reuses the key pair.
+#
+#  This setting controls for how long a key pair is reused. A compromised key could be used
+#  for new signing requests for this amount of time. If the reuse time is too short, the
+#  overhead of generating new key pairs increases.
+#
+dcache.authn.gsi.delegation.cache.lifetime = 30000
+dcache.authn.gsi.delegation.cache.lifetime.unit = MILLISECONDS
+```
+The default host and CA certificate refresh periods have been significantly reduced to 60 seconds:
+```
+# ---- Host certificate refresh period
+#
+# This option influences in which intervals the host certificate will be
+# reloaded on a running door.
+#
+dcache.authn.hostcert.refresh = 60
+dcache.authn.hostcert.refresh.unit = SECONDS
+
+# ---- CA certificates refresh period
+#
+# Grid-based authentication usually requires to load a set of
+# certificates that are accepted as certificate authorities. This
+# option influences in which interval these trust anchors are
+# reloaded.
+#
+dcache.authn.capath.refresh = 60
+dcache.authn.capath.refresh.unit = SECONDS
+``` 
+Since CANL provides configurable name space verification, CRL validation, and OCSP validation, all doors and pools relying on TLS now respect the following new configuration properties:
+```
+# ---- Certificate Authority Namespace usage mode
+#
+# A CA namespace restricts the certificates dCache accepts as issued by a given CA. The namespace
+# is defined in .namespaces (EURGIDPMA) or .signing_policy (GLOBUS) files alongside the CA certificate.
+#
+# This setting controls the rules governing the verification of these namespaces. The following
+# documentation is copied from the EMI CANL library used by dCache.
+#
+#       GLOBUS_EUGRIDPMA
+#
+#          A Globus EACL is checked first. If found for the issuing CA then it is used and enforced.
+#             If not found then EuGridPMA namespaces definition is searched. If found for the issuing CA
+#                then it is enforced.
+#                   If no definition is present then namespaces check is considered to be passed.
+#
+#       EUGRIDPMA_GLOBUS
+#
+#          An EuGridPMA namespaces definition is checked first. If found for the issuing CA then it is enforced.
+#             If not found then Globus EACL definition is searched. If found for the issuing CA
+#                then it is enforced.
+#                   If no definition is present then namespaces check is considered to be passed.
+#
+#       GLOBUS
+#
+#          A Globus EACL is checked only. If found for the issuing CA then it is used and enforced.
+#             If no definition is present then namespaces check is considered to be passed.
+#
+#       EUGRIDPMA
+#
+#          An EuGridPMA namespaces definition is checked only. If found for the issuing CA then it is enforced.
+#             If no definition is present then namespaces check is considered to be passed.
+#
+#       GLOBUS_EUGRIDPMA_REQUIRE
+#
+#          A Globus EACL is checked first. If found for the issuing CA then it is used and enforced.
+#             If not found then EuGridPMA namespaces definition is searched. If found for the issuing CA
+#                then it is enforced.
+#                   If no definition is present then namespaces check is considered to be failed.
+#
+#       EUGRIDPMA_GLOBUS_REQUIRE
+#
+#          An EuGridPMA namespaces definition is checked first. If found for the issuing CA then it is enforced.
+#             If not found then Globus EACL definition is searched. If found for the issuing CA
+#                then it is enforced.
+#                   If no definition is present then namespaces check is considered to be failed.
+#
+#       GLOBUS_REQUIRE
+#
+#          A Globus EACL is checked only. If found for the issuing CA then it is used and enforced.
+#             If no definition is present then namespaces check is considered to be failed.
+#
+#       EUGRIDPMA_REQUIRE
+#
+#          An EuGridPMA namespaces definition is checked only. If found for the issuing CA then it is enforced.
+#             If no definition is present then namespaces check is considered to be failed.
+#
+#       EUGRIDPMA_AND_GLOBUS
+#
+#          Both EuGridPMA namespaces definition and Globus EACL are enforced for the issuer.
+#             If no definition is present then namespaces check is considered to be passed.
+#
+#       EUGRIDPMA_AND_GLOBUS_REQUIRE
+#
+#          Both EuGridPMA namespaces definition and Globus EACL are enforced for the issuer.
+#             If no definition is present then namespaces check is considered to be failed.
+#
+#       IGNORE
+#
+#          CA namespaces are fully ignored, even if present.
+#
+dcache.authn.namespace-mode=EUGRIDPMA_AND_GLOBUS_REQUIRE
+
+# ---- Certificate Revocation List usage mode
+#
+# CAs regularly publish certificate revocation lists (CRLs) containing the serial id of
+# certificates that have been revoked. Such certificates should not be accepted by dCache.
+#
+# Such CRLs are stored in .r? files alongside the CA certificate. It is outside the scope
+# of dCache to refresh the CRLs.
+#
+# This setting controls how dCache makes use of such CRLs. The following documentation is copied
+# from the EMI CANL library used by dCache.
+#
+#       REQUIRE
+#
+#          A CRL for CA which issued a certificate being validated
+#             must be present and valid and the certificate must not be on the list.
+#
+#       IF_VALID
+#
+#          If a CRL for CA which issued a certificate being validated
+#             is present and valid then the certificate must not be listed on the CRL.
+#                If the CRL is present but it is outdated (or anyhow else corrupted) then the validation fails.
+#                   If CRL is missing then validation is successful.
+#
+#       IGNORE
+#
+#          CRL is not checked even if it exists.
+#
+dcache.authn.crl-mode=REQUIRE
+
+# ---- On-line Certificate Status Protocol usage mode
+#
+# On-line Certificate Status Protocol (OCSP) is an alternative to CRLs in which
+# dCache consults an external service to check the validity of a particular certificate.
+#
+# This setting controls how dCache makes use of this protocol. The following documentation is copied
+# from the EMI CANL library used by dCache.
+#
+#       REQUIRE
+#
+#          Require, for each checked certificate, that at least one valid OCSP responder is defined and
+#             that at least one responder of those defined returns a correct certificate status.
+#                If all OCSP responders return error or unknown status, the last one received is treated as a
+#                   critical validation error.
+#                      Not suggested, unless it is guaranteed that well configured responder(s) is(are) defined
+#                         and can handle all queries without timeouts.
+#
+#       IF_AVAILABLE
+#
+#          Use OCSP for each certificate if a responder is available. OCSP 'unknown' status and
+#             query errors (as timeout) do not cause the validation to fail.
+#                Also a lack of defined responder doesn't cause the validation to fail.
+#
+#       IGNORE
+#
+#          Do not use OCSP.
+#
+dcache.authn.ocsp-mode=IF_AVAILABLE
+```
+Finally, logging from CANL is different. Our initial impression is also that it is significantly better.
+
+#### FTP Client
+Another area in which dCache relied on the JGlobus client was for the FTP client. An FTP client is needed as part of our SRM client as well as for SRM and WebDAV third party copy. In the quest to drop the JGlobus dependency, we have forked the JGlobus FTP client and ported it to CANL. There should be minimal user visible changes from this. The most interesting may be that our client now identifies itself to the server as being dCache and using the dCache version number.
+
+#### SRM client
+As mentioned above, the SRM client has been updated to use our own GSI implementation on top of CANL for certificate handling. On a host with a large number of CA certificates, the startup time is significantly reduced.
+
+The SRM protocol is implemented using SOAP over HTTP over GSI. Due to the old SOAP version used we are bound to the Axis 1 library. In the past we relied upon the minimalistic HTTP client integrated into Axis 1. In dCache 2.14 we added an Axis handler to use the Apache HTTP components client. The primary benefits are:
+    * Proper keep-alive support, meaning that the client no longer needs to reestablish the connection to the server for every low level SRM request. This both reduces the latency experienced by the client and reduces load on the server.
+    * Strict *RFC 2818* host name verification.
+
+In partiular the latter point has the potential to break compatibility with some sites. This is the case if the host certificate used by the site does not comply with RFC 2818. Without strict RFC 2818 support, TLS/GSI connections are susceptible to man in the middle attacks. The Globus Toolkit (the C library, not the JGlobus Java version) will switch to strict RFC 2818 support by default at the end of 2015 and we expect that most sites will quickly request certificates with correct subject alternative names.
+
+If compatibility with non-compliant sites is required, we recommend using a version of the SRM client prior to 2.14. On the server side, strict RFC 2818 host name verification is only used for server side srmCopy or WEBDAV copy. If these are needed with non-compilant sites, we suggest using dCache 2.13.
+
+#### Updated help pages for many admin shell commands
+dCache has for several years been in a transition between two infrastructures for providing admin shell commands. The newer of these provides much better help pages. In dCache 2.14 many commands have been ported from old to the new scheme.
+
+#### Admin shell gains pool group globs
+The new admin shell introduced in dCache 2.13 provides bulk commands with cell name globs. In dCache 2.14 pool group globs have been added to these commands. A pool group glob follows the pattern `pool/poolgroup`, with either side accepting `?` and `*` wildcards. It expands to all pools that match the left side of the pattern and which are within a pool group matching the right side. Either side may be empty and is equivalent to `*`.
+
+Thus `/` will match any pool that appears in any pool group, `/atlas_disk` matches any pool in `atlas_disk`, and `*_rack1/atlas_buffer` matches any pool with a name ending in `_rack1` in the `atlas_buffer` pool group. These could for instance be used to perform bulk commands over a set of pool:
+```
+\s /atlas_tape flush set interval 600
+\s /atlas_tape save
+```
+
+#### Significant schema changes in Chimera
+The Chimera database schema has been updated to improve throughput, reduce latency and reduce disk space. It will be updated automatically the first time the `PnfsManager` is started, but is is advisable to apply the schema changes ahead of time by using the `dcache database update` command. It is also advisable to make a backup of the database *prior* to upgrading as well as run a test migration on a clone of the database to know how long it will take as well discover any incompatibilities with local schema modification.
+
+Once upgraded to dCache 2.14, one cannot downgrade to 2.13 without rolling back the schema changes. This must be done *before* downgrading using the `dcache database rollbackToDate` command.
+
+Several schema changes are applied durin upgrade:
+    * The `.` and `..` directory entries are no longer stored in the database. Since Chimera is stored in a relational database, it can find parrent directories without these backpointers. Where applicable, these directories entries are created on the fly in dCache.
+    * Directory tags are no longer created by a trigger. In the past the trigger reacted upon the insertion of the `..` entry, but since we no longer insert this entry we cannot rely on this trigger. Furthermore, for the temporary directories created for every SRM upload the tags should not be copied and the trigger needlessly slowed down creating such directories.
+    * Inodes are now created using the new `f_create_inode` stored procedure. This eliminates several round trips between the client and PostgreSQL.
+    * The type of the `itagid` column of the `t_tags_inodes` table has been changed to a 64 bit auto sequence field. This reduces storage space as well as CPU load for these tables.
+    * The `t_access_latency` and `t_retention_policy` tables have been merged into the `t_inodes` table. The former two tables are dropped. This reduces storage space as well as latency in creating and reading inodes.
+    * The address mask is removed from the `t_acl`. Chimera ACLs no longer support access control by client IP.
+
+#### Chimera PostgreSQL 9.5 driver
+Chimera has pluggable RDBMS drivers. dCache 2.14 adds a driver specific for PostgreSQL 9.5 and newer. This driver avoids the excessive logging caused by primary key uniqueness violations that are common with Chimera.
+
+To activate, set `chimera.db.dialect` to `PgSQL95`.
+
+#### Chimera race conditions and performance improvements
+Many rare races and sublte bugs have been fixed, and lots of small performance improvements have been made.
+
+#### PnfsManager uses single request queue
+Due to the extensive changes in Chimera, PnfsManager can now use a single request queue shared between all threads. Thus the `info` output no longer shows a queue per thread and it is easier to keep all threads busy.
+
+Technically, there is a queue per thread-group, but since thread-groups are not currently used by Chimera, for all intends and purposes there is only one general request queue.
+
+#### Forbidden and obsolete properties have been dropped
+Properties marked as forbidden or obsolete in 2.13 have been removed from dCache 2.14. Properties marked deprecated in 2.13 have been marked obsolete. Please verify and fix any warnings produced by `dcache check-config` before upgrading.
+
+#### Cryptographic cipher selection
+dCache now bans RC4 ciphers by default. The ability to disable Diffie Hellman key exchange on JVMs in which this is broken has been removed since Diffie Hellman now works on all supported JVMs.
+
+#### FTP gains new SITE commands
+The FTP door now supports the `SITE CHGRP`, `SITE SYMLINKFROM` and `SITE SYMLINKTO` non-standard commands to change the file group and create symbolic links. These commands are supported by the UberFTP client.
+
+#### FTP proxy limits internal network interface
+FTP doors may act as proxies for the data connection. In this case the pool establishes a TCP connection to the door. Previously the door would listen to the wildcard address (i.e. all interfaces) even though only one specific address was sent to the pool to connect to. In dCache 2.14 the door now limits the server socket to this one address.
+
+#### gPlazma drops support for plugin caching
+gPlazma used to only instantiate a plugin once even if it was mentioned several times in gplazma.conf. This meant that only a single configuration could be applied, thus making several usecases impossible to handle.
+
+dCache now instantiates every plugin every time it is referenced in gplazma.conf and each instance can have its own configuration. The options for forcing enabling the old behaviour have been removed.
+
+#### gPlazma supports concurrent request processing
+In the past gPlazma was single threaded, which in particular was a problem with plugins that called out to external services. gPlazma is now multi-threaded and will happily call several plugins concurrently. Even the same plugin may be called concurrently, which means that all plugins - including those by third-parties - must be thread safe.
+
+#### gPlazma XACML plugin update for improved spec compliance
+The XACML plugin has been ported to CANL too and in the process it was updated to improved compliance with the specification. The client library used by the plugin unfortunately depends on JGlobus and thus the current version of dCache still ships with JGlobus.
+
+#### DCAP delegates X.509 and VOMS proxy processing to gPlazma
+Previously DCAP would validate the VOMS signatures of a proxy in the door, thus requiring a vomsdir to be set up on the door. gPlazma now delegates this to gPlazma and the gPlazma voms plugin. Thus it is no longer necessary to keep a vomsdir setup on GSIDCAP doors.
+
+#### NFS door publish exported paths login broker information
+The NFS door now include the exported paths as part of the login broker information. This information is available to the info service and the srm door.
+
+#### NFS door sees large number of fixes and improvements
+As always, the NFS door has received a fair share of fixes and improvements. If you rely heavily on the NFS door, using the latest version of dCache is recommended.
+
+#### Pool manager generates sorted configuration files
+Previously entries where output in hash order, which meant that minor changes in configuration could cause drastic changes to the order.
+
+#### WebDAV door links to https version of dCache home page
+Thanks to a contribution by Christoph Anton Mitterer, the footer on WebDAV door directory listings now point to the https version of the dCache home page.
+
+#### WebDAV door can report file locality
+SRM has the concept of file locality, i.e. whether a file is on disk, on tape, both, offline or lost. The WebDAV door now exposes this information too:
+    * The HTML rendering of directory listings uses the icon to indicate the file locality.
+    * For programatic access, the WebDAV PROPFIND method.
+
+An example of the latter follows:
+```
+$ curl -X PROPFIND -H Depth:0 http://localhost:2880/disk/test-1447231167-1 \
+  --data '<?xml version="1.0" encoding="utf-8"?>
+          <D:propfind xmlns:D="DAV:">
+              <D:prop xmlns:R="http://www.dcache.org/2013/webdav"
+                      xmlns:S="http://srm.lbl.gov/StorageResourceManager">
+                  <R:Checksums/>
+                  <S:AccessLatency/>
+                  <S:RetentionPolicy/><S:FileLocality/>
+              </D:prop>
+          </D:propfind>'
+
+<?xml version="1.0" encoding="utf-8" ?>
+<d:multistatus xmlns:cal="urn:ietf:params:xml:ns:caldav"
+               xmlns:cs="http://calendarserver.org/ns/"
+               xmlns:card="urn:ietf:params:xml:ns:carddav"
+               xmlns:ns2="http://www.dcache.org/2013/webdav"
+               xmlns:ns1="http://srm.lbl.gov/StorageResourceManager"
+               xmlns:d="DAV:">
+    <d:response>
+        <d:href>/disk/test-1447231167-1</d:href>
+        <d:propstat>
+            <d:prop>
+                <ns1:FileLocality>ONLINE</ns1:FileLocality>
+                <ns1:RetentionPolicy>REPLICA</ns1:RetentionPolicy>
+                <ns2:Checksums>adler32=3b8711d6</ns2:Checksums>
+                <ns1:AccessLatency>ONLINE</ns1:AccessLatency>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+</d:multistatus>
+```
+
+#### WebDAV door provides human-friendly file sizes
+An abbreviated file size is shown as a hint in the WebDAV door HTML rendering. To see, however the mouse over the file entry.
+
+#### WebDAV door enables `BASIC` authentication by default over https connections
+This provides a means for clients without a certificate to authenticate with the server. Note that `BASIC` authentication should not be used over unencrypted connections.
+
+#### Pools now always compute checksums on the fly
+Recently we changes the default checksum policy for new pools from `onwrite` to `ontransfer`. The latter requires less resources as it computes the checksum during the upload rather than reading the file back from disk after the transfer.
+
+In dCache 2.14 the `ontransfer` checksum calculation is no longer optional - it is always computed for streaming uploads. The `onwrite` policy can still be enabled, but it would calculate the checksum a second time. A future update of dCache will remove the `onwrite` policy.
+
+#### SRM database schema changes
+The SRM database is now managed by the liquibase schema management library. An existing schema from a previous installation is automatically detected, but we recommend doing a test upgrade on a clone of the database to check compatibility with any local schema modifications.
+
+Several changes are made to the schema of the SRM database:
+    * Missing indexes are added.
+    * Unused indexes are removed.
+    * The `count` column of the `lsrequests` table is renamed to `cnt` to avoid conflicts with the like named SQL keyword.
+    * The encoding of user information is redone entirely and user information is now stored in a binary format.
+
+In particular the latter change is worth paying attention to. Due to this change, existing requsts will fail during upgrade as the existing user information is deleted upon upgrade. Already finished requests will be kept in the database until they are garbage collected, but they too loose all information about who created it. Furthermore, the binary encoding in the new user record means that it is no longer easy to access this information in local queries. This change was necessary to work around limitations in the previous serialization - in short, we cannot serialize X.500 names in string form without loosing information.
+
+#### SRM gains a pluggable transfer strategy mechanism
+Plugins may decide in which order to serve transfer requests by clients. Two strategies are shipped with dCache with the default implementing a simple fair share strategy:
+```
+# ---- Request transfer strategy
+#
+# srmPrepareToPut and srmPrepareToGet requests enter the READY state when the TURL is handed
+# out to the client. If the request is processed asynchronously (client is polling for the result),
+# the request stays in the RQUEUED state until the client queries the result.
+#
+# A transfer strategy plugin has the ability to prevent the transition from the RQUEUED to READY
+# state. A plugin may allow the number of concurrent transfers to be limited, or may provide
+# some fair-share between parties.
+#
+# Two plugins ship with dCache:
+#
+#     first-come-first-served
+#
+#         The maximum number of requests in the READY state is limited by
+#         srm.request.*.max-transfers, but otherwise TURLs are handed out to
+#         whomever comes first.
+#
+#     fair-share
+#
+#         The maximum number of requests in the READY state is limited by
+#         srm.request.*.max-transfers, but slots are kept free such that each party with
+#         requests in RQUEUED will receive its fair share.
+#
+#           A configurable discriminator defines the grouping between which to provide a
+#           fair share.
+#
+srm.plugins.transfer = fair-share
+
+# Discriminator for the fair share transfer strategy.
+srm.transfer.fair-share!discriminator = ${srm.plugins.discriminator}
+```
+#### Deprecation of SRM 1 support
+The SRM 1 protocol has long been superseeded by the SRM 2.2 protocol. dCache 2.14 adds options to disable SRM 1 support and disables it by default:
+```
+#
+# SRM versions to support.
+#
+# Comma separated list of SRM versions to support.
+#
+(any-of?1|2)srm.version=2
+```
+You can reenable SRM 1 support by adding it to the above configuration option. Please contact us if you do so we can ascertain when to drop SRM 1 entirely.
+
+This change also removes support for third party srmCopy to/from SRM 1 servers, no matter whether SRM 1 support in the server is enabled or not.
+
+#### SRM request scheduler state simplification
+SRM scheduler states have been simplified by collapsing several states into the new `InProgress` state. Besides changing the output of the `info` command, this will change the state values observed in the database. Sites that monitor these states will have to update their monitoring scripts. The job state mappings can be viewed here: *https://github.com/dCache/dcache/blob/master/modules/srm-server/src/main/resources/org/dcache/srm/request/sql/srmjobstate–214.csv*
+
+#### SRM no longer retries requests
+SRM used to have support to retry requests internally upon errors. The implementation of this functionality was problematic since
+    * many errors were not retried even when they should, and worse
+    * many errors that should not be retried were.
+
+In the interest of fail fast behaviour and simpler code, support for internally retrying requests has been dropped. Failures are propagated to the client and it is up to the client to determine whether and how to retry. This also allows client to more quickly fall back to other sites in case of problems.
+
+#### SRM changes algorithm to detect a local SURL
+The SRM protocol has a concept of site URLs and classifies these into those local to the storage system and those belonging to other storage systems. This classification is important when the SRM is to determine which file is local and which is remote in a third party SRM copy operation, or just to determine if the SURL is indeed local in put or get operations.
+
+The most important changes are:
+    * srmCopy is now limited to having a local source or local destination SURL. It no longer allows a transfer between a local non-SRM door and a remote system.
+    * no DNS lookup is performed in determining whether the SURL is local. Previously the host name would be resolved to an IP addressed and the IP addressed would be compared to local addresses. Now the list of local host names is determined during startup and the host name in the SURL is compared to the local names directly. An administrator still has control over which names to consider local by setting the `srm.net.local-hosts` property.
+
+#### Several minor SRM fixes
+Several corner cases and race conditions have been fixed, as well as better failure handling to prevent leaking pins or upload directories.
+
+#### Configurable kXR_Qconfig replies for xrootd
+The xrootd protocol has a mechanism to query the server configuration using a kXR_Qconfig request. dCache provided a few hard-coded properties, but the xrootd protocol specifies an open list of properties.
+
+In dCache 2.14 the admin may inject additional properties to be returned to the client. These are configured through the dCache configuration system:
+```
+#  ----- Custom kXR_Qconfig responses
+#
+#   xrootd clients may query the server configuration using a kXR_Qconfig request.
+#   These key value pairs can be queried. Additional key value pairs may be added as
+#   needed, see the xrootd protocol specification at http://xrootd.org/ for details.
+#
+(prefix)xrootd.query-config = kXR_Qconfig responses
+xrootd.query-config!version = dCache ${dcache.version}
+xrootd.query-config!sitename = ${dcache.description}
+xrootd.query-config!role = none
+
+#  ----- Custom kXR_Qconfig responses
+#
+#   xrootd clients may query the server configuration using a kXR_Qconfig request.
+#   These key value pairs can be queried. Additional key value pairs may be added as
+#   needed, see the xrootd protocol specification at http://xrootd.org/ for details.
+#
+(prefix)pool.mover.xrootd.query-config = kXR_Qconfig responses
+pool.mover.xrootd.query-config!version = dCache ${dcache.version}
+pool.mover.xrootd.query-config!sitename = ${dcache.description}
+pool.mover.xrootd.query-config!role = none
+```
+
+#### Many third party libraries have been updated
+Most notably the new version of the PostgreSQL JDBC driver has some nice performance improvements.
 
 ### New changes introduced on 2.15
 #### Glob patterns gain alternation lists
