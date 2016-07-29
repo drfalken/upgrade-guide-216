@@ -96,6 +96,20 @@ Downgrading after upgrade is not possible without manual intervention: In partic
 * Sites with a custom httpd.conf configuration will have to adjust this upon upgrade to inject the cell address of the info service.
 
 ## Services
+* This section describes renamed, collapsed, split, and removed services. A summary of the changes is contained in the following table.
+
+| Service                 | Configuration / Remark
+|------------------------:|:------------------------------------------------------------------------------------------------------|
+| *srm*                   | SRM has been split: this is the *frontend* service. SRMv1 has been dropped.                           |
+| *srmmanager*            | SRM has been split: this is the *backend* service                                                     |
+| *zookeeper*             | New service for locating services and leader election. May run as *standalone* service out of dCache. |
+| *resilience*            | Replaces the *replica* service.                                                                       |
+| *remotetransfermanager* | Obsolote. Has been merge in to *transfermanagers*.                                                    |
+| *copymanager*           | Obsolote. Has been merge in to *transfermanagers*.                                                    |
+| *transfermanagers*      | The *RemoteTransferManager* and *CopyManager* cells have been merged into *transfermanagers*          |
+| *gplazma*               | Added a new generic *multimap* plugin.                                                                |
+| *info*                  | No longer hardcoded in *httpd*.                                                                       |
+| *pnfsmanager*           | Chimera has pluggable RDBMS drivers for PostgreSQL 9.5.                                               |
 
 ### Removed Services
 
