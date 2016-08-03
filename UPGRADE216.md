@@ -908,6 +908,37 @@ Better spec compliance, faster.
 #### Schema Changes
 
 ## Upgrade procedure
+Steps
+1. Upgrade to the latest patch level release of the dCache release being in use.
+2. Prior to upgrading, run `dcache check-config` and fix any warnings. Information about properties marked deprecated, obsolete or forbidden in version 2.13 or earlier has been dropped in 2.16. Failing to do this before upgrading will mean that you will not receive warnings or errors for using an old property.
+3. If the node relies on any databases (you may check the output of dcache database ls to recognize the services that do), then tag the current schema version by running `dcache database tag dcache-2.10`.
+4. If you have installed any third party plugins that offer new services (that you have instantiated in the layout file), then remove these and check with the vendor for updated versions.
+* CMS-TFC Plugins can be downloaded from XRootD CMS-TFC Releases in dCache.org.
+ * Package `xrootd4j-cms-plugin-1.3.7-1.noarch.rpm` is actually working with dCache 2.16.
+* ATLAS N2N Plugins can be downloaded from the WLCG Repository.
+ * Package `dcache-xrootd-n2n-plugin-6.0.7-0.noarch.rpm` is actually working with dCache 2.16.
+* XRootD Monitoring plugins can be found in the WLCG Repository.
+ * Package `dcache-plugin-xrootd-monitor-7.0.0-0.noarch.rpm` is actually working with dCache 2.16.
+5. Run `dcache services` and compare the services with the table listing changed services. If any of those services are used, replace them with the suggested alternative after upgrading.
+6. Ensure that `Java 8` is installed as your default Java (or unique). If you come from dCache 2.13 or higher you should have this done already.
+7.  Install the dCache 2.16 package using your package manager.
+8.  Reset `/etc/dcache/logback.xml` to the default file. How this is done depends on your package manager: Debian will ask during package installation whether you want the new version from the package (say yes). RPM will leave the new version as /etc/dcache/logback.xml.rpmnew and expects you to copy it over.
+9.  If you used either head, pool, or single as the layout name, you should check that the package manager hasn't renamed your layout file.
+10.  Run `dcache check-config`. You will receive an error for any forbidden property and a warning for any deprecated or obsolete property. You will receive errors about unrecognized services defined in the layout file. You will also receive information about properties not recognized by dCache - if these are typos, fix them. Fix any errors and repeat. As a bare minimum, the following changes commonly have to be applied during this step:
+* Remove deprecated services.
+* Replace the `srmspacemanager` service for `spacemanager`.
+* `dcache.enable.space-reservation`is set to `true` by default. Check if this needs to be disabled for specific services.
+11. Verify that your HSM script can handle the remove command. If not, update the HSM script or disable the HSM cleaner.
+* Sites using [Enstore](http://www.fnal.gov/docs/products/enstore/) will have to set `cleaner.enable.hsm=false` in the `cleaner` service.
+12. If you have customized the look of the webdav door, you should reset the style to the default and reapply any customizations.
+13. If you are using [pCells](https://www.dcache.org/downloads/gui/index.shtml), please update to the latest version. Check the [GUI Download Page](https://www.dcache.org/downloads/gui/index.shtml) in order to see which versions work with dCache 2.13.
+14. If the node relies on any databases, then update the schemas by running `dcache database update`.
+15. Start dCache and verify that it works.
+16. Run `dcache check-config` and fix any warnings.
+
+Note that some properties that were previously used by several services have to be replaced with a configuration for each service type. Check the documentation in `/usr/share/dcache/defaults` for any property you need to change.
+
+Also note that some properties have changed values or are inverted. The deprecated properties retain their old interpretation, however when replacing those with their new names, you have to update the value. In particular boolean properties that used to accept values like yes, no, enabled, disabled, now only accept true and false.
 
 ## Frequently Asked Questions
 
