@@ -914,13 +914,13 @@ Steps
 2. Prior to upgrading, run `dcache check-config` and fix any warnings. Information about properties marked deprecated, obsolete or forbidden in version 2.13 or earlier has been dropped in 2.16. Failing to do this before upgrading will mean that you will not receive warnings or errors for using an old property.
 3. If the node relies on any databases (you may check the output of dcache database ls to recognize the services that do), then tag the current schema version by running `dcache database tag dcache-2.10`.
 4. If you have installed any third party plugins that offer new services (that you have instantiated in the layout file), then remove these and check with the vendor for updated versions.
-* CMS-TFC Plugins can be downloaded from XRootD CMS-TFC Releases in dCache.org.
+* CMS-TFC Plugins can be downloaded from [XRootD CMS-TFC Releases](https://www.dcache.org/downloads/xrootd4j/index.shtml) in [dCache.org](https://www.dcache.org/).
  * Package `xrootd4j-cms-plugin-1.3.7-1.noarch.rpm` is actually working with dCache 2.16.
-* ATLAS N2N Plugins can be downloaded from the WLCG Repository.
+* ATLAS N2N Plugins can be downloaded from the [WLCG Repository](http://linuxsoft.cern.ch/wlcg/sl6/x86_64/).
  * Package `dcache-xrootd-n2n-plugin-6.0.7-0.noarch.rpm` is actually working with dCache 2.16.
-* XRootD Monitoring plugins can be found in the WLCG Repository.
+* XRootD Monitoring plugins can be found in the [WLCG Repository](http://linuxsoft.cern.ch/wlcg/sl6/x86_64/).
  * Package `dcache-plugin-xrootd-monitor-7.0.0-0.noarch.rpm` is actually working with dCache 2.16.
-5. Run `dcache services` and compare the services with the table listing changed services. If any of those services are used, replace them with the suggested alternative after upgrading.
+5. Run `dcache services` and compare the services with the [table](https://github.com/dCache/upgrade-guide-216/blob/master/UPGRADE216.md#services) listing changed services. If any of those services are used, replace them with the suggested alternative after upgrading.
 6. Ensure that `Java 8` is installed as your default Java (or unique). If you come from dCache 2.13 or higher you should have this done already.
 7.  Install the dCache 2.16 package using your package manager.
 8.  Reset `/etc/dcache/logback.xml` to the default file. How this is done depends on your package manager: Debian will ask during package installation whether you want the new version from the package (say yes). RPM will leave the new version as /etc/dcache/logback.xml.rpmnew and expects you to copy it over.
