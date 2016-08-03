@@ -909,7 +909,6 @@ Better spec compliance, faster.
 #### Schema Changes
 
 ## Upgrade procedure
-Steps
 1. Upgrade to the latest patch level release of the dCache release being in use.
 2. Prior to upgrading, run `dcache check-config` and fix any warnings. Information about properties marked deprecated, obsolete or forbidden in version 2.13 or earlier has been dropped in 2.16. Failing to do this before upgrading will mean that you will not receive warnings or errors for using an old property.
 3. If the node relies on any databases (you may check the output of dcache database ls to recognize the services that do), then tag the current schema version by running `dcache database tag dcache-2.10`.
