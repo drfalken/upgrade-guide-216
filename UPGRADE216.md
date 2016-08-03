@@ -78,6 +78,7 @@ Downgrading after upgrade is not possible without manual intervention: In partic
 * SRM no longer retries SRM requests internally. Failures are propagated to the client to provide fail-fast behaviour.
 * SRM no longer resolves host names in SURLs when determining whether they are local to this dCache instance or not. In particular, this may affect sites that use DNS aliases.
 * The SRM database schema is now managed by liquibase and the schema is updated upon upgrade. To downgrade, the schema changes have to be rolled back with the appropriate command in dCache *before* downgrading dCache. As a consequence, user information for existing SRM requests will be lost from the database. Third party scripts that access the SRM database directly may have to be updated.
+* CANL/OCSP caches the queried result for a while, but the OCSP server might be a single point of failure that will receive a lot of requests. Some CAs advertises OCSP servers in the certificates they issue without actually supporting them. 
 
 #### Incompatibilities introducted in 2.15
 * Some configuration properties have been deprecated or made obsolete. `dcache check-config` can tell you if you are affected.
