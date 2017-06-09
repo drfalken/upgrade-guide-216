@@ -324,7 +324,7 @@ The Chimera database schema has been updated to improve throughput, reduce laten
 Once upgraded to dCache 2.14, one cannot downgrade to 2.13 without rolling back the schema changes. This must be done *before* downgrading using the `dcache database rollbackToDate` command.
 
 Several schema changes are applied durin upgrade:
-* The `.` and `..` directory entries are no longer stored in the database. Since Chimera is stored in a relational database, it can find parrent directories without these backpointers. Where applicable, these directories entries are created on the fly in dCache.
+* The `.` and `..` directory entries are no longer stored in the database. Since Chimera is stored in a relational database, it can find parent directories without these backpointers. Where applicable, these directories entries are created on the fly in dCache.
 * Directory tags are no longer created by a trigger. In the past the trigger reacted upon the insertion of the `..` entry, but since we no longer insert this entry we cannot rely on this trigger. Furthermore, for the temporary directories created for every SRM upload the tags should not be copied and the trigger needlessly slowed down creating such directories.
 * Inodes are now created using the new `f_create_inode` stored procedure. This eliminates several round trips between the client and PostgreSQL.
 * The type of the `itagid` column of the `t_tags_inodes` table has been changed to a 64 bit auto sequence field. This reduces storage space as well as CPU load for these tables.
@@ -337,7 +337,7 @@ Chimera has pluggable RDBMS drivers. dCache 2.14 adds a driver specific for Post
 To activate, set `chimera.db.dialect` to `PgSQL95`.
 
 #### Chimera race conditions and performance improvements
-Many rare races and sublte bugs have been fixed, and lots of small performance improvements have been made.
+Many rare races and subtle bugs have been fixed, and lots of small performance improvements have been made.
 
 #### PnfsManager uses single request queue
 Due to the extensive changes in Chimera, PnfsManager can now use a single request queue shared between all threads. Thus the `info` output no longer shows a queue per thread and it is easier to keep all threads busy.
