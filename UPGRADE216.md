@@ -704,8 +704,8 @@ Lock contention during pool initialization has been reduced. In particular this 
 
 #### NFS becomes more robust against mover timeouts
 If the NFS door times out while waiting for a write mover to be activated, it would retry the creation and erroneously create a read mover instead. It no longer does this.
-ANONYMOUS and AUTHENTICATED ACEs gain consistent semantics
 
+#### ANONYMOUS and AUTHENTICATED ACEs gain consistent semantics
 ANONYMOUS and AUTHENTICATED ACEs in name space ACLs in previous releases was inconsistent and erroneous and in some situations both ACEs were applied simultaneously despite RFC 3530 stating that they are mutually exclusive. The interpretation is now no longer erroneous nor inconsistent.
 
 #### SRM `info` command provides cache statistics
