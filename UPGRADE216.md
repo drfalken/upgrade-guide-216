@@ -751,7 +751,7 @@ gplazma.xacml.vomsdir=${dcache.authn.vomsdir}
 
 ### New changes introduced on 2.16
 #### Introduced Apache ZooKeeper as an external coordination service
-Apache ZooKeeper is a naming, coordination, and synchronization services. Starting with the release of dCache 2.16, Apache ZooKeeper is a required dependency to run dCache. It is used by several components in dCache – e.g. for locating dCache domains, locating services, and leader election. Future versions are most likely increasing reliance on Apache ZooKeeper.
+Apache ZooKeeper is a naming, coordination, and synchronization service. Starting with the release of dCache 2.16, Apache ZooKeeper is a required dependency to run dCache. It is used by several components in dCache – e.g. for locating dCache domains, locating services, and leader election. Future versions are most likely increasing reliance on Apache ZooKeeper.
 
 To make migration of existing deployments easy, we support using an embedded ZooKeeper, i.e. the ZooKeeper server runs inside a regular dCache service in a dCache domain. It is configured through dCache’s own configuration system. For easy upgrade, add the following as the first domain in the layout file of the host with `dCacheDomain`:
 ```
