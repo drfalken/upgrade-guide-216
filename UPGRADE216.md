@@ -946,8 +946,11 @@ Also note that some properties have changed values or are inverted. The deprecat
 ### Chimera database is slow
 
 Some sites have observed bad Chimera database performance after the upgrade. 
+
 **Symptoms**: system load is higher than before, and Postgres uses much more CPU. Listings take a very long time, and transfers may run into timeouts. Postgres logs may show queries waiting for locks for many seconds. A select on table `pg_stat_activity` may show two handful of `delete from t_tags_inodes`.
+
 **Cause**: dCache 2.16 uses the database differently, which may set Postgres off on the wrong foot about query planning; in some cases, indexes are ignored and tables (specifically t_tags) are read sequentially.
+
 **Solution**: `vacuum analyze` in a cron job, so that Postgres collects better statistics for better query planning. You could also put `enable_seqscan = off` in `postgresql.conf`, but disabling sequential scans can (potentially) introduce additional problems.
 
 ## Frequently Asked Questions
