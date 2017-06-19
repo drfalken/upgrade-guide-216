@@ -911,7 +911,7 @@ Better spec compliance, faster.
 ## Upgrade procedure
 1. Upgrade to the latest patch level release of the dCache release being in use.
 2. Prior to upgrading, run `dcache check-config` and fix any warnings. Information about properties marked deprecated, obsolete or forbidden in version 2.13 or earlier has been dropped in 2.16. Failing to do this before upgrading will mean that you will not receive warnings or errors for using an old property.
-3. If the node relies on any databases (you may check the output of dcache database ls to recognize the services that do), then tag the current schema version by running `dcache database tag dcache-2.10`.
+3. If the node relies on any databases (you may check the output of dcache database ls to recognize the services that do), then tag the current schema version by running `dcache database tag dcache-2.13`.
 4. If you have installed any third party plugins that offer new services (that you have instantiated in the layout file), then remove these and check with the vendor for updated versions.
 * **CMS-TFC Plugins** can be downloaded from [XRootD CMS-TFC Releases](https://www.dcache.org/downloads/xrootd4j/index.shtml) in [dCache.org](https://www.dcache.org/).
  * Package `xrootd4j-cms-plugin-1.3.7-1.noarch.rpm` is actually working with dCache 2.16.
